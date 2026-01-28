@@ -1,0 +1,201 @@
+{
+  "id": "dfd_ecommerce_001",
+  "name": "E-Commerce Platform",
+  "description": "A typical e-commerce system with web frontend, API backend, database, and payment processor",
+  "elements": [
+    {
+      "id": "elem_customer",
+      "name": "Customer",
+      "type": "actor",
+      "description": "End users browsing and purchasing products",
+      "trustLevel": "untrusted",
+      "isExternalEntity": true
+    },
+    {
+      "id": "elem_web_server",
+      "name": "Web Server",
+      "type": "process",
+      "description": "Frontend web application (React/Angular)",
+      "trustLevel": "trusted",
+      "isProcess": true
+    },
+    {
+      "id": "elem_api_gateway",
+      "name": "API Gateway",
+      "type": "process",
+      "description": "REST API gateway for backend services",
+      "trustLevel": "trusted",
+      "isProcess": true
+    },
+    {
+      "id": "elem_user_service",
+      "name": "User Service",
+      "type": "process",
+      "description": "Authentication and user management microservice",
+      "trustLevel": "trusted",
+      "isProcess": true
+    },
+    {
+      "id": "elem_order_service",
+      "name": "Order Service",
+      "type": "process",
+      "description": "Order processing microservice",
+      "trustLevel": "trusted",
+      "isProcess": true
+    },
+    {
+      "id": "elem_payment_processor",
+      "name": "Payment Processor",
+      "type": "external_entity",
+      "description": "Third-party payment gateway (Stripe/PayPal)",
+      "trustLevel": "partially-trusted",
+      "isExternalEntity": true
+    },
+    {
+      "id": "elem_user_db",
+      "name": "User Database",
+      "type": "datastore",
+      "description": "PostgreSQL database for user accounts and profiles",
+      "trustLevel": "trusted",
+      "isDatastore": true
+    },
+    {
+      "id": "elem_order_db",
+      "name": "Order Database",
+      "type": "datastore",
+      "description": "PostgreSQL database for orders and transactions",
+      "trustLevel": "trusted",
+      "isDatastore": true
+    },
+    {
+      "id": "elem_cache",
+      "name": "Redis Cache",
+      "type": "datastore",
+      "description": "In-memory cache for sessions and product catalog",
+      "trustLevel": "trusted",
+      "isDatastore": true
+    },
+    {
+      "id": "elem_logging",
+      "name": "Logging Service",
+      "type": "external_entity",
+      "description": "Centralized logging (ELK Stack)",
+      "trustLevel": "trusted",
+      "isExternalEntity": true
+    }
+  ],
+  "dataflows": [
+    {
+      "id": "df_1",
+      "name": "Browse Products",
+      "from": "elem_customer",
+      "to": "elem_web_server",
+      "protocol": "HTTPS",
+      "hasSensitiveData": false,
+      "isEncrypted": true,
+      "isCrossNetwork": true
+    },
+    {
+      "id": "df_2",
+      "name": "User Login",
+      "from": "elem_web_server",
+      "to": "elem_api_gateway",
+      "protocol": "HTTPS",
+      "hasSensitiveData": true,
+      "isEncrypted": true,
+      "isCrossNetwork": true
+    },
+    {
+      "id": "df_3",
+      "name": "Authenticate User",
+      "from": "elem_api_gateway",
+      "to": "elem_user_service",
+      "protocol": "gRPC",
+      "hasSensitiveData": true,
+      "isEncrypted": true,
+      "isCrossNetwork": false
+    },
+    {
+      "id": "df_4",
+      "name": "Query User Data",
+      "from": "elem_user_service",
+      "to": "elem_user_db",
+      "protocol": "TCP",
+      "hasSensitiveData": true,
+      "isEncrypted": true,
+      "isCrossNetwork": false
+    },
+    {
+      "id": "df_5",
+      "name": "Cache User Session",
+      "from": "elem_user_service",
+      "to": "elem_cache",
+      "protocol": "RESP",
+      "hasSensitiveData": true,
+      "isEncrypted": false,
+      "isCrossNetwork": false
+    },
+    {
+      "id": "df_6",
+      "name": "Create Order",
+      "from": "elem_api_gateway",
+      "to": "elem_order_service",
+      "protocol": "HTTPS",
+      "hasSensitiveData": true,
+      "isEncrypted": true,
+      "isCrossNetwork": false
+    },
+    {
+      "id": "df_7",
+      "name": "Store Order",
+      "from": "elem_order_service",
+      "to": "elem_order_db",
+      "protocol": "TCP",
+      "hasSensitiveData": true,
+      "isEncrypted": true,
+      "isCrossNetwork": false
+    },
+    {
+      "id": "df_8",
+      "name": "Process Payment",
+      "from": "elem_order_service",
+      "to": "elem_payment_processor",
+      "protocol": "HTTPS",
+      "hasSensitiveData": true,
+      "isEncrypted": true,
+      "isCrossNetwork": true
+    },
+    {
+      "id": "df_9",
+      "name": "Send Logs",
+      "from": "elem_api_gateway",
+      "to": "elem_logging",
+      "protocol": "HTTPS",
+      "hasSensitiveData": false,
+      "isEncrypted": true,
+      "isCrossNetwork": true
+    },
+    {
+      "id": "df_10",
+      "name": "Serve Static Content",
+      "from": "elem_web_server",
+      "to": "elem_customer",
+      "protocol": "HTTPS",
+      "hasSensitiveData": false,
+      "isEncrypted": true,
+      "isCrossNetwork": true
+    }
+  ],
+  "trustBoundaries": [
+    {
+      "id": "tb_internet",
+      "name": "Internet Boundary",
+      "elements": ["elem_customer", "elem_payment_processor"]
+    },
+    {
+      "id": "tb_internal",
+      "name": "Internal Network",
+      "elements": ["elem_api_gateway", "elem_user_service", "elem_order_service", "elem_user_db", "elem_order_db", "elem_cache"]
+    }
+  ]
+}
