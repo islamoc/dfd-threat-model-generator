@@ -2,9 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import dotenv from 'dotenv';
 import threatGenerator from './src/threatGenerator.js';
 import dfdValidator from './src/dfdValidator.js';
 import threatLibrary from './src/threatLibrary.js';
+import apiRoutes from './src/api-routes.js';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -155,6 +159,9 @@ app.post('/api/export/json', (req, res) => {
   }
 });
 
+// Mount new API routes for diagram import and GitHub integration
+app.use('/api', apiRoutes);
+
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
@@ -174,4 +181,6 @@ app.listen(PORT, () => {
   console.log(`🔒 DFD Threat Model Generator running on port ${PORT}`);
   console.log(`📝 API available at http://localhost:${PORT}/api`);
   console.log(`🌐 UI available at http://localhost:${PORT}`);
+  console.log(`📸 Diagram import endpoint: POST /api/diagrams/import-from-image`);
+  console.log(`🔗 GitHub integration: POST /api/github/push-diagram`);
 });
