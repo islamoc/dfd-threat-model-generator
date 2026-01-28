@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DFD Threat Model Generator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #0066cc;
+      --primary-light: #e6f2ff;
+      --primary-dark: #004a99;
+      --danger: #cc0000;
+      --warning: #ff9900;
+      --success: #00cc00;
+      --dark: #1a1a1a;
+      --light: #f5f5f5;
+      --border: #ddd;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: var(--dark);
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 1.1em;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 25px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: var(--primary);
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--dark);
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 1em;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 1em;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      flex: 1;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--light);
+      color: var(--dark);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 0.9em;
+    }
+
+    .results-section {
+      margin-top: 20px;
+    }
+
+    .threat-item {
+      background: var(--light);
+      border-left: 4px solid var(--danger);
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+
+    .threat-item.high {
+      border-left-color: var(--warning);
+    }
+
+    .threat-item.medium {
+      border-left-color: #ff9900;
+    }
+
+    .threat-item.low {
+      border-left-color: var(--success);
+    }
+
+    .threat-title {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .severity-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .severity-critical {
+      background: var(--danger);
+      color: white;
+    }
+
+    .severity-high {
+      background: var(--warning);
+      color: white;
+    }
+
+    .severity-medium {
+      background: #ffcc00;
+      color: #333;
+    }
+
+    .severity-low {
+      background: var(--success);
+      color: white;
+    }
+
+    .threat-description {
+      color: #666;
+      font-size: 0.95em;
+      margin-bottom: 10px;
+    }
+
+    .stride-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .stride-tag {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: 500;
+    }
+
+    .mitigations {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+    }
+
+    .mitigations h4 {
+      color: var(--dark);
+      font-size: 0.95em;
+      margin-bottom: 8px;
+    }
+
+    .mitigations ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .mitigations li {
+      color: #666;
+      font-size: 0.9em;
+      padding: 4px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .mitigations li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--success);
+      font-weight: bold;
+    }
+
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    @media (max-width: 768px) {
+      .summary-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .stat-box {
+      background: var(--light);
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      border-top: 4px solid var(--primary);
+    }
+
+    .stat-number {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+
+    .stat-box.critical {
+      border-top-color: var(--danger);
+    }
+
+    .stat-box.critical .stat-number {
+      color: var(--danger);
+    }
+
+    .stat-box.high {
+      border-top-color: var(--warning);
+    }
+
+    .stat-box.high .stat-number {
+      color: var(--warning);
+    }
+
+    .stat-box.medium {
+      border-top-color: #ffcc00;
+    }
+
+    .stat-box.medium .stat-number {
+      color: #ffcc00;
+    }
+
+    .stat-box.low {
+      border-top-color: var(--success);
+    }
+
+    .stat-box.low .stat-number {
+      color: var(--success);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .spinner {
+      border: 4px solid var(--light);
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #ffe6e6;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .success {
+      background: #e6ffe6;
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .tab-button {
+      background: none;
+      border: none;
+      padding: 15px 20px;
+      cursor: pointer;
+      color: #666;
+      font-weight: 600;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .tab-button.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .export-options {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    code {
+      background: var(--light);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔐 DFD Threat Model Generator</h1>
+      <p class="subtitle">AI-powered threat model generation from Data Flow Diagrams using OWASP library</p>
+    </header>
+
+    <div class="main-grid">
+      <!-- DFD Input Section -->
+      <div class="card">
+        <h2>📋 Define Your DFD</h2>
+        
+        <div class="form-group">
+          <label>Project Name *</label>
+          <input type="text" id="dfdName" placeholder="e.g., E-Commerce Platform" required>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="dfdDescription" placeholder="Brief description of your system..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Add Element</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <input type="text" id="elementName" placeholder="Element name">
+            <select id="elementType">
+              <option value="">-- Select Type --</option>
+              <option value="actor">Actor/User</option>
+              <option value="process">Process</option>
+              <option value="datastore">Data Store</option>
+              <option value="external_entity">External Entity</option>
+            </select>
+          </div>
+          <button class="btn-primary btn-small" style="margin-top: 10px;" onclick="addElement()">Add Element</button>
+        </div>
+
+        <div id="elementsList" style="margin-top: 20px; max-height: 300px; overflow-y: auto;">
+          <p style="color: #999; font-size: 0.9em;">No elements added yet</p>
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+          <label>Add Data Flow</label>
+          <div style="display: grid; gap: 10px;">
+            <input type="text" id="dataflowName" placeholder="Flow name">
+            <select id="dataflowFrom">
+              <option value="">-- From --</option>
+            </select>
+            <select id="dataflowTo">
+              <option value="">-- To --</option>
+            </select>
+            <input type="text" id="dataflowProtocol" placeholder="Protocol (HTTP, HTTPS, etc.)">
+            <label style="display: flex; align-items: center; margin: 0;">
+              <input type="checkbox" id="hasSensitiveData" style="width: auto; margin-right: 10px;">
+              <span>Carries Sensitive Data</span>
+            </label>
+          </div>
+          <button class="btn-primary btn-small" style="margin-top: 10px;" onclick="addDataflow()">Add Data Flow</button>
+        </div>
+
+        <div id="dataflowsList" style="margin-top: 20px; max-height: 300px; overflow-y: auto;">
+          <p style="color: #999; font-size: 0.9em;">No dataflows added yet</p>
+        </div>
+
+        <div class="button-group" style="margin-top: 30px;">
+          <button class="btn-primary" onclick="generateThreatModel()">🚀 Generate Threat Model</button>
+          <button class="btn-secondary" onclick="clearForm()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div class="card">
+        <h2>🎯 Analysis Results</h2>
+        <div id="resultsContent" style="text-align: center; color: #999;">
+          <p style="margin-top: 40px;">Results will appear here after generation</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Threats Details -->
+    <div id="threatsSection" style="display: none;">
+      <div class="card">
+        <h2>🚨 Identified Threats</h2>
+        
+        <div class="tabs">
+          <button class="tab-button active" onclick="switchTab(event, 'allThreats')">All Threats</button>
+          <button class="tab-button" onclick="switchTab(event, 'bySeverity')">By Severity</button>
+          <button class="tab-button" onclick="switchTab(event, 'bySTRIDE')">By STRIDE</button>
+          <button class="tab-button" onclick="switchTab(event, 'report')">Report</button>
+        </div>
+
+        <div id="allThreats" class="tab-content active">
+          <div id="threatsList"></div>
+        </div>
+
+        <div id="bySeverity" class="tab-content">
+          <div id="severityBreakdown"></div>
+        </div>
+
+        <div id="bySTRIDE" class="tab-content">
+          <div id="strideBreakdown"></div>
+        </div>
+
+        <div id="report" class="tab-content">
+          <div id="reportContent"></div>
+        </div>
+
+        <div class="export-options">
+          <button class="btn-primary btn-small" onclick="exportJSON()">📥 Export JSON</button>
+          <button class="btn-primary btn-small" onclick="exportCSV()">📊 Export CSV</button>
+          <button class="btn-secondary btn-small" onclick="printReport()">🖨️ Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
