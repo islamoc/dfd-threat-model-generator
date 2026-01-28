@@ -18,6 +18,178 @@ function generateId() {
   return 'id_' + Math.random().toString(36).substr(2, 9);
 }
 
+// UI helper to show status messages for image import
+function setImageImportStatus(message, type = 'info') {
+  const container = document.getElementById('imageImportStatus');
+  if (!container) return;
+
+  if (!message) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const classes = {
+    info: 'info',
+    error: 'error',
+    success: 'success',
+    loading: 'loading'
+  };
+
+  if (type === 'loading') {
+    container.innerHTML = `
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>${message}</p>
+      </div>
+    `;
+  } else {
+    const cssClass = classes[type] || 'info';
+    container.innerHTML = `<div class="${cssClass}">${message}</div>`;
+  }
+}
+
+// Import DFD from image into the in-memory model (no GitHub)
+async function importDFDFromImage() {
+  const fileInput = document.getElementById('dfdImageInput');
+  const file = fileInput?.files?.[0];
+
+  if (!file) {
+    alert('Please select an image file first');
+    return;
+  }
+
+  setImageImportStatus('Analyzing diagram image and extracting DFD structure...', 'loading');
+
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('diagramType', 'dfd');
+
+    const response = await fetch(`${API_BASE}/diagrams/import-from-image`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      const msg = result.error || 'Failed to import DFD from image';
+      setImageImportStatus(msg, 'error');
+      if (result.validationErrors) {
+        console.error('DFD validation errors:', result.validationErrors);
+      }
+      return;
+    }
+
+    // Merge imported DFD into current form
+    applyImportedDFDToForm(result.dfd);
+
+    setImageImportStatus('Diagram imported successfully. Review elements and dataflows, then generate threats.', 'success');
+  } catch (error) {
+    console.error('Import from image failed:', error);
+    setImageImportStatus(`Import failed: ${error.message}`, 'error');
+  }
+}
+
+// Import DFD from image and also push JSON to GitHub
+async function importAndPushDFDFromImage() {
+  const fileInput = document.getElementById('dfdImageInput');
+  const file = fileInput?.files?.[0];
+
+  if (!file) {
+    alert('Please select an image file first');
+    return;
+  }
+
+  const projectName = document.getElementById('dfdName').value.trim();
+  if (!projectName) {
+    alert('Please enter project name before importing & pushing');
+    return;
+  }
+
+  const owner = prompt('GitHub owner (e.g., islamoc):');
+  const repo = prompt('GitHub repository name (e.g., dfd-threat-model-generator):');
+  if (!owner || !repo) {
+    alert('GitHub owner and repo are required to push');
+    return;
+  }
+
+  const branch = prompt('Branch to use (default: main):', 'main') || 'main';
+
+  setImageImportStatus('Importing diagram and pushing to GitHub...', 'loading');
+
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('diagramType', 'dfd');
+    formData.append('userId', owner); // simple mapping: use GitHub login as userId for now
+    formData.append('owner', owner);
+    formData.append('repo', repo);
+    formData.append('branch', branch);
+    formData.append('message', `Import DFD from image for ${projectName}`);
+
+    const response = await fetch(`${API_BASE}/diagrams/import-and-push`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      if (result.requiresAuth || result.requiresConsent) {
+        setImageImportStatus('GitHub authorization/consent required. Complete auth in backend and retry.', 'error');
+      } else {
+        setImageImportStatus(result.error || 'Import & push failed', 'error');
+      }
+      console.error('Import & push error details:', result);
+      return;
+    }
+
+    // Apply imported DFD into the UI so user can see what was pushed
+    if (result.dfd) {
+      applyImportedDFDToForm(result.dfd);
+    }
+
+    setImageImportStatus(
+      `Diagram imported and pushed to GitHub: ${result.github?.message || ''}`,
+      'success'
+    );
+  } catch (error) {
+    console.error('Import and push from image failed:', error);
+    setImageImportStatus(`Import & push failed: ${error.message}`, 'error');
+  }
+}
+
+// Apply imported DFD object to current form/UI
+function applyImportedDFDToForm(importedDFD) {
+  if (!importedDFD) return;
+
+  // Reset current DFD data and fill from imported
+  dfdData = {
+    id: importedDFD.id || generateId(),
+    name: importedDFD.name || '',
+    description: importedDFD.description || '',
+    elements: importedDFD.elements || [],
+    dataflows: importedDFD.dataflows || [],
+    trustBoundaries: importedDFD.trustBoundaries || []
+  };
+
+  // Update form fields
+  const nameInput = document.getElementById('dfdName');
+  const descInput = document.getElementById('dfdDescription');
+  if (nameInput && !nameInput.value) {
+    nameInput.value = dfdData.name;
+  }
+  if (descInput && !descInput.value) {
+    descInput.value = dfdData.description;
+  }
+
+  // Update UI lists and dropdowns
+  updateElementsList();
+  updateDataflowsList();
+  updateDropdowns();
+}
+
 // Add element to DFD
 function addElement() {
   const name = document.getElementById('elementName').value.trim();
@@ -53,6 +225,8 @@ function removeElement(id) {
 // Update elements display
 function updateElementsList() {
   const list = document.getElementById('elementsList');
+  if (!list) return;
+
   if (dfdData.elements.length === 0) {
     list.innerHTML = '<p style="color: #999; font-size: 0.9em;">No elements added yet</p>';
     return;
@@ -73,6 +247,8 @@ function updateElementsList() {
 function updateDropdowns() {
   const fromSelect = document.getElementById('dataflowFrom');
   const toSelect = document.getElementById('dataflowTo');
+  if (!fromSelect || !toSelect) return;
+
   const options = dfdData.elements.map(el => `<option value="${el.id}">${el.name}</option>`).join('');
   
   fromSelect.innerHTML = '<option value="">-- From --</option>' + options;
@@ -127,6 +303,8 @@ function removeDataflow(id) {
 // Update dataflows display
 function updateDataflowsList() {
   const list = document.getElementById('dataflowsList');
+  if (!list) return;
+
   if (dfdData.dataflows.length === 0) {
     list.innerHTML = '<p style="color: #999; font-size: 0.9em;">No dataflows added yet</p>';
     return;
@@ -172,6 +350,7 @@ function clearForm() {
     updateDropdowns();
     document.getElementById('resultsContent').innerHTML = '<p style="margin-top: 40px; color: #999;">Results will appear here after generation</p>';
     document.getElementById('threatsSection').style.display = 'none';
+    setImageImportStatus('', 'info');
   }
 }
 
