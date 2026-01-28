@@ -56,7 +56,7 @@
 
     .main-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.1fr 0.9fr;
       gap: 20px;
       margin-bottom: 20px;
     }
@@ -79,6 +79,16 @@
       margin-bottom: 20px;
       border-bottom: 2px solid var(--primary);
       padding-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h2 span.section-hint {
+      color: #777;
+      font-size: 0.85em;
+      font-weight: 400;
     }
 
     .form-group {
@@ -94,7 +104,8 @@
 
     input[type="text"],
     textarea,
-    select {
+    select,
+    input[type="file"] {
       width: 100%;
       padding: 12px;
       border: 1px solid var(--border);
@@ -102,11 +113,13 @@
       font-family: inherit;
       font-size: 1em;
       transition: border-color 0.3s;
+      background-color: #fff;
     }
 
     input[type="text"]:focus,
     textarea:focus,
-    select:focus {
+    select:focus,
+    input[type="file"]:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px var(--primary-light);
@@ -119,6 +132,7 @@
 
     .button-group {
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       margin-top: 20px;
     }
@@ -131,6 +145,10 @@
       cursor: pointer;
       font-weight: 600;
       transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
     .btn-primary {
@@ -157,6 +175,18 @@
     .btn-small {
       padding: 8px 16px;
       font-size: 0.9em;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px dashed var(--border);
+      color: #555;
+    }
+
+    .btn-ghost:hover {
+      background: var(--primary-light);
+      border-style: solid;
+      color: var(--primary-dark);
     }
 
     .results-section {
@@ -376,11 +406,20 @@
       margin-bottom: 20px;
     }
 
+    .info-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85em;
+      color: #666;
+    }
+
     .tabs {
       display: flex;
       gap: 0;
       border-bottom: 2px solid var(--border);
       margin-bottom: 20px;
+      flex-wrap: wrap;
     }
 
     .tab-button {
@@ -409,6 +448,7 @@
 
     .export-options {
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       margin-top: 20px;
     }
@@ -419,6 +459,41 @@
       border-radius: 3px;
       font-family: 'Monaco', 'Menlo', monospace;
       font-size: 0.9em;
+    }
+
+    .import-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #fafafa;
+      border: 1px dashed var(--border);
+    }
+
+    .import-grid small {
+      font-size: 0.8em;
+      color: #777;
+    }
+
+    .import-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .pill-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85em;
+      color: #555;
+    }
+
+    .pill-label input[type="checkbox"] {
+      width: auto;
     }
   </style>
 </head>
@@ -432,7 +507,10 @@
     <div class="main-grid">
       <!-- DFD Input Section -->
       <div class="card">
-        <h2>📋 Define Your DFD</h2>
+        <h2>
+          <span>📋 Define Your DFD</span>
+          <span class="section-hint">You can build it manually or import from an image</span>
+        </h2>
         
         <div class="form-group">
           <label>Project Name *</label>
@@ -444,8 +522,34 @@
           <textarea id="dfdDescription" placeholder="Brief description of your system..."></textarea>
         </div>
 
+        <!-- Import from Image -->
         <div class="form-group">
-          <label>Add Element</label>
+          <label>📸 Import DFD from Image</label>
+          <div class="import-grid">
+            <div>
+              <input type="file" id="dfdImageInput" accept="image/*">
+              <small>PNG, JPEG, WebP, GIF. The image should clearly show processes, data stores, and flows.</small>
+            </div>
+            <div>
+              <label class="pill-label">
+                <input type="checkbox" id="autoPushCheckbox">
+                <span>After import, push diagram JSON to GitHub (requires GitHub auth)</span>
+              </label>
+            </div>
+            <div class="import-actions">
+              <button class="btn-secondary btn-small" onclick="importDFDFromImage()">✨ Import Into Form</button>
+              <button class="btn-ghost btn-small" onclick="importAndPushDFDFromImage()">📸 ➜ 🐙 Import &amp; Push to GitHub</button>
+              <span class="info-inline">
+                <span style="font-size: 1.1em;">ℹ️</span>
+                <span>Uses Claude vision API to parse the diagram and map it into elements / dataflows.</span>
+              </span>
+            </div>
+            <div id="imageImportStatus"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Manually Add Element</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <input type="text" id="elementName" placeholder="Element name">
             <select id="elementType">
@@ -459,12 +563,12 @@
           <button class="btn-primary btn-small" style="margin-top: 10px;" onclick="addElement()">Add Element</button>
         </div>
 
-        <div id="elementsList" style="margin-top: 20px; max-height: 300px; overflow-y: auto;">
+        <div id="elementsList" style="margin-top: 20px; max-height: 260px; overflow-y: auto;">
           <p style="color: #999; font-size: 0.9em;">No elements added yet</p>
         </div>
 
         <div class="form-group" style="margin-top: 20px;">
-          <label>Add Data Flow</label>
+          <label>Manually Add Data Flow</label>
           <div style="display: grid; gap: 10px;">
             <input type="text" id="dataflowName" placeholder="Flow name">
             <select id="dataflowFrom">
@@ -474,15 +578,15 @@
               <option value="">-- To --</option>
             </select>
             <input type="text" id="dataflowProtocol" placeholder="Protocol (HTTP, HTTPS, etc.)">
-            <label style="display: flex; align-items: center; margin: 0;">
-              <input type="checkbox" id="hasSensitiveData" style="width: auto; margin-right: 10px;">
+            <label style="display: flex; align-items: center; margin: 0; gap: 8px;">
+              <input type="checkbox" id="hasSensitiveData" style="width: auto;">
               <span>Carries Sensitive Data</span>
             </label>
           </div>
           <button class="btn-primary btn-small" style="margin-top: 10px;" onclick="addDataflow()">Add Data Flow</button>
         </div>
 
-        <div id="dataflowsList" style="margin-top: 20px; max-height: 300px; overflow-y: auto;">
+        <div id="dataflowsList" style="margin-top: 20px; max-height: 260px; overflow-y: auto;">
           <p style="color: #999; font-size: 0.9em;">No dataflows added yet</p>
         </div>
 
